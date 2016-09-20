@@ -1,13 +1,16 @@
+
+var TO_RADIANS = Math.PI/180;
+
 function SpaceShip(x, y, width, heigth, rotation) {
     this.position = new Vector2D(x,y);
     this.width = width;
     this.heigth = heigth;
-    this.acceleration = 1.0;
+    this.acceleration = 0.2;
     this.rotation = rotation; //in degrees
     this.alive = true;
-    this.speed = 0;
+    this.speed = new Vector2D(0,0);
+    this.maxSpeed = 2;
 }
-
 function Vector2D(x,y) {
     this.x = x;
     this.y = y;
@@ -41,11 +44,19 @@ SpaceShip.prototype.turnLeft = function () {
 SpaceShip.prototype.turnRight = function () {
     this.rotation = (this.rotation + 5)%360 ;
 }
+SpaceShip.prototype.accelerate = function () {
+    this.speed.sub(new Vector2D(Math.cos(TO_RADIANS*(this.rotation+90))*this.acceleration, Math.sin(TO_RADIANS*(this.rotation+90))*this.acceleration));
+}
+SpaceShip.prototype.break = function () {
+    this.speed.add(new Vector2D(Math.cos(TO_RADIANS*(this.rotation+90))*this.acceleration, Math.sin(TO_RADIANS*(this.rotation+90))*this.acceleration));
+}
+SpaceShip.prototype.step = function () {
+    this.position.add(this.speed);
+}
 
 function drawShip(ctx, img, ship) {
     ctx.save();
     var mid = ship.middle();
-    var TO_RADIANS = Math.PI/180;
     ctx.translate(mid.x, mid.y);
     ctx.rotate(ship.rotation * TO_RADIANS);
     ctx.drawImage(img, -ship.width/2, -ship.heigth/2, ship.width, ship.heigth);
@@ -68,6 +79,8 @@ window.onload = function() {
         ctx.fillRect(0,0,1000,800);
         drawShip(ctx, img1, ship1);
         drawShip(ctx, img2, ship2);
+        ship1.step();
+        ship2.step();
     }
     setInterval(step,33);
 
@@ -78,6 +91,12 @@ window.onload = function() {
         }
         if (key === 39) {
             ship2.turnRight();
+        }
+        if (key === 38) {
+            ship2.accelerate();
+        }
+        if (key === 40) {
+            ship2.break();
         }
     })
 };

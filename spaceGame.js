@@ -73,7 +73,8 @@ function SpaceShip(x, y, width, heigth, rotation) {
     this.acceleration = 0.2;
     this.rotation = rotation; //in degrees
     this.alive = true;
-    this.maxSpeed = 2;
+    this.maxSpeed = 3;
+    this.moveable = true;
 }
 
 SpaceShip.prototype.middle = function () {
@@ -89,11 +90,15 @@ SpaceShip.prototype.turnRight = function () {
 };
 
 SpaceShip.prototype.accelerate = function () {
-    this.speed.sub(new Vector2D(Math.cos(TO_RADIANS*(this.rotation+90))*this.acceleration, Math.sin(TO_RADIANS*(this.rotation+90))*this.acceleration));
+    if (this.moveable){
+        this.speed.sub(new Vector2D(Math.cos(TO_RADIANS*(this.rotation+90))*this.acceleration, Math.sin(TO_RADIANS*(this.rotation+90))*this.acceleration));
+    }
 };
 
 SpaceShip.prototype.break = function () {
-    this.speed.add(new Vector2D(Math.cos(TO_RADIANS*(this.rotation+90))*this.acceleration, Math.sin(TO_RADIANS*(this.rotation+90))*this.acceleration));
+    if (this.moveable) {
+        this.speed.add(new Vector2D(Math.cos(TO_RADIANS*(this.rotation+90))*this.acceleration, Math.sin(TO_RADIANS*(this.rotation+90))*this.acceleration));
+    }    
 };
 
 SpaceShip.prototype.step = function () {
@@ -110,18 +115,29 @@ SpaceShip.prototype.limitSpeed = function () {
     }
 };
 
+SpaceShip.prototype.recover = function () {
+    this.moveable = false;
+    setTimeout((function(){
+        this.moveable = true;
+    }).bind(this),1000);
+}
+
 SpaceShip.prototype.bumpCheck = function () {
     if ( (this.position.x+this.width) > globalWidth){
         this.speed.mul(new Vector2D(-1,1));
+        this.recover();
     }
     if ( (this.position.y+this.heigth) > globalHeigth){
         this.speed.mul(new Vector2D(1,-1));
+        this.recover();
     }
     if ( (this.position.x) < 0){
         this.speed.mul(new Vector2D(-1,1));
+        this.recover();
     }
     if ( (this.position.y) < 0){
         this.speed.mul(new Vector2D(1,-1));
+        this.recover();
     }
 }
 

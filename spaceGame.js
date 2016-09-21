@@ -65,6 +65,24 @@ Vector2D.prototype.getNorm = function () {
     return new Vector2D(this.x, this.y).div(length);
 };
 
+function Shot(x, y, width, heigth, rotation){
+    this.position = new Vector2D(x,y);
+    this.speed = new Vector2D(0,0);
+    this.maxSpeed = 10;
+    this.width = width;
+    this.heigth = heigth;
+    this.rotation = rotation;
+    this.active = false;
+}
+
+Shot.prototype.step = function () {
+    this.position.add(this.speed);
+}
+
+Shot.prototype.middle = function () {
+    return new Vector2D(this.position.x+this.width/2, this.position.y+this.heigth/2);
+};
+
 function SpaceShip(x, y, width, heigth, rotation) {
     this.position = new Vector2D(x,y);
     this.speed = new Vector2D(0,0);
@@ -75,6 +93,7 @@ function SpaceShip(x, y, width, heigth, rotation) {
     this.alive = true;
     this.maxSpeed = 3;
     this.moveable = true;
+    this.shot = new Shot(0,0,16,16,0);
 }
 
 SpaceShip.prototype.middle = function () {
@@ -105,6 +124,7 @@ SpaceShip.prototype.step = function () {
     this.limitSpeed();
     this.position.add(this.speed);
     this.bumpCheck();
+    this.shot.step();
 };
 
 SpaceShip.prototype.limitSpeed = function () {
@@ -141,12 +161,19 @@ SpaceShip.prototype.bumpCheck = function () {
     }
 }
 
-function drawShip(ctx, img, ship) {
+SpaceShip.prototype.giveFire = function () {
+    this.shot.position = this.middle();
+    this.shot.speed = new Vector2D(Math.cos(TO_RADIANS*(this.rotation+270))*this.shot.maxSpeed, Math.sin(TO_RADIANS*(this.rotation+270))*this.shot.maxSpeed);
+    this.shot.active = true;
+    this.shot.rotation = this.rotation;
+}
+
+function drawObject(ctx, img, object) {
     ctx.save();
-    var mid = ship.middle();
+    var mid = object.middle();
     ctx.translate(mid.x, mid.y);
-    ctx.rotate(ship.rotation * TO_RADIANS);
-    ctx.drawImage(img, -ship.width/2, -ship.heigth/2, ship.width, ship.heigth);
+    ctx.rotate(object.rotation * TO_RADIANS);
+    ctx.drawImage(img, -object.width/2, -object.heigth/2, object.width, object.heigth);
     ctx.restore();
 }
 
@@ -160,14 +187,26 @@ window.onload = function() {
 
     var img1=document.getElementById("bgbattleship");
     var img2=document.getElementById("bgspeedship");
+    var shot1 = document.getElementById("shot01");
+    var shot2 = document.getElementById("shot02");
     
     function step(){
         ctx.fillStyle="#FFFFFF";
         ctx.fillRect(0,0,globalWidth,globalHeigth);
-        drawShip(ctx, img1, ship1);
-        drawShip(ctx, img2, ship2);
+
+        //logic
         ship1.step();
         ship2.step();
+
+        //view
+        drawObject(ctx, img1, ship1);
+        drawObject(ctx, img2, ship2);
+        if (ship1.shot.active) {
+            drawObject(ctx, shot1, ship1.shot);
+        }
+        if (ship2.shot.active) {
+            drawObject(ctx, shot2, ship2.shot);
+        }
     }
     setInterval(step,33);
 
@@ -178,10 +217,12 @@ window.onload = function() {
         keyMap[39] = ship2.turnRight.bind(ship2); //arrow right
         keyMap[38] = ship2.accelerate.bind(ship2); //arrow up
         keyMap[40] = ship2.break.bind(ship2); //arrow down
+        keyMap[35] = ship2.giveFire.bind(ship2); //end key
         keyMap[65] = ship1.turnLeft.bind(ship1); //a key
         keyMap[68] = ship1.turnRight.bind(ship1); //d key
         keyMap[87] = ship1.accelerate.bind(ship1); //w key
         keyMap[83] = ship1.break.bind(ship1); //s key
+        keyMap[69] = ship1.giveFire.bind(ship1); //e key
 
         keyMap[key](); //run action
     });

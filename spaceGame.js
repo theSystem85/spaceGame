@@ -225,6 +225,8 @@ window.onload = function() {
         keyMap[83] = ship1.break.bind(ship1); //s key
         keyMap[69] = ship1.giveFire.bind(ship1); //e key
 
-        keyMap[key](); //run action
+        if(typeof keyMap[key] !== 'undefined'){
+            keyMap[key](); //run action
+        }
     });
 };

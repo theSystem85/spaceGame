@@ -1,4 +1,5 @@
 
+//global definitions
 var TO_RADIANS = Math.PI/180;
 var globalWidth = 1000;
 var globalHeigth = 800;

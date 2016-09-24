@@ -200,15 +200,15 @@ SpaceShip.prototype.giveFire = function () {
         this.shot.speed = new Vector2D(Math.cos(TO_RADIANS*(this.rotation+270))*this.shot.maxSpeed, Math.sin(TO_RADIANS*(this.rotation+270))*this.shot.maxSpeed);
         this.shot.active = true;
         this.shot.rotation = this.rotation;
-        audioExplosion.pause();
-        audioExplosion.currentTime=0;
-        audioExplosion.play();
+        audioShot.pause();
+        audioShot.currentTime=0;
+        audioShot.play();
     }
 }
 
 SpaceShip.prototype.explode = function () {
     this.alive = false;
-    audioShot.play();
+    audioExplosion.play();
     this.animation.status = 'started'; //start animation;
 }
 

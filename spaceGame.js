@@ -167,10 +167,12 @@ SpaceShip.prototype.bumpCheck = function () {
 }
 
 SpaceShip.prototype.giveFire = function () {
-    this.shot.position = this.middle();
-    this.shot.speed = new Vector2D(Math.cos(TO_RADIANS*(this.rotation+270))*this.shot.maxSpeed, Math.sin(TO_RADIANS*(this.rotation+270))*this.shot.maxSpeed);
-    this.shot.active = true;
-    this.shot.rotation = this.rotation;
+    if(this.alive){
+        this.shot.position = this.middle();
+        this.shot.speed = new Vector2D(Math.cos(TO_RADIANS*(this.rotation+270))*this.shot.maxSpeed, Math.sin(TO_RADIANS*(this.rotation+270))*this.shot.maxSpeed);
+        this.shot.active = true;
+        this.shot.rotation = this.rotation;
+    }
 }
 
 SpaceShip.prototype.explode = function () {

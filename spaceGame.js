@@ -4,8 +4,8 @@ var TO_RADIANS = Math.PI/180;
 var globalWidth = 1000;
 var globalHeight = 800;
 
-var ship1 = new SpaceShip(10,10,30,40,180);
-var ship2 = new SpaceShip(960,750,30,40,0);
+var ship1 = new SpaceShip(10,10,30,40,180, 'player1');
+var ship2 = new SpaceShip(960,750,30,40,0, 'player2');
 
 function Vector2D(x,y) {
     this.x = x;
@@ -87,7 +87,7 @@ Shot.prototype.middle = function () {
     return new Vector2D(this.position.x+this.width/2, this.position.y+this.height/2);
 };
 
-function SpaceShip(x, y, width, height, rotation) {
+function SpaceShip(x, y, width, height, rotation, playerName) {
     this.position = new Vector2D(x,y);
     this.speed = new Vector2D(0,0);
     this.width = width;
@@ -99,6 +99,7 @@ function SpaceShip(x, y, width, height, rotation) {
     this.moveable = true;
     this.shot = new Shot(-32,-32,16,16,0);
     this.score = 0;
+    this.playerName = playerName;
 }
 
 SpaceShip.prototype.middle = function () {
@@ -196,19 +197,59 @@ function collisionCheck(obj1, obj2) {  // obj must have width, height, position=
 }
 
 function shipCollisionCheck(shipX, shipY){
-    if (collisionCheck(shipX, shipY)) {
+    if (collisionCheck(shipX, shipY) && shipX.alive == true && shipY.alive == true) {
         shipX.explode();
         shipY.explode();        
         shipX.score++;
         shipY.score++;
+        console.log(shipY.score)
+        document.getElementById("countScoresP1").innerHTML = shipX.score;
+        document.getElementById("countScoresP2").innerHTML = shipY.score;
+        respawn(ship1, ship2);
     }
 }
 
 function hitCheck(shipX, shipY){
-    if (collisionCheck(shipX, shipY.shot)){
+    if (collisionCheck(shipX, shipY.shot) && shipX.alive == true){
         shipX.explode();
+        shipX.shot.active = false;
+        shipY.shot.active = false;
         shipY.score++;
+        if (shipY.playerName == 'player2') {
+            document.getElementById("countScoresP2").innerHTML = shipY.score;
+        } else {
+            document.getElementById("countScoresP1").innerHTML = shipY.score;
+        }
+        
+        respawn(ship1, ship2);
     }
+}
+
+function respawn(ship1, ship2){
+    setTimeout(function () {
+        if (!ship1.alive || !ship2.alive){
+            ship1.position = new Vector2D(10,10);
+            ship2.position = new Vector2D(960,750);
+            ship1.speed = new Vector2D(0,0);
+            ship2.speed = new Vector2D(0,0);
+            ship1.rotation = 180;
+            ship2.rotation = 0;
+            ship1.alive = true;
+            ship2.alive = true;
+            shipX.shot.active = true;
+            shipY.shot.active = true;
+    }
+    }, 1000)    
+}
+
+function winGame() {
+    if (ship1.score == 10) {
+        alert("Player battleship won!")
+    }
+    if (ship2.score == 10) {
+        alert("Player battleship won!")
+    }
+
 }
 
 function drawObject(ctx, img, object) {
@@ -242,6 +283,7 @@ window.onload = function() {
         hitCheck(ship2, ship1);
         shipCollisionCheck(ship1,ship2);
         shipCollisionCheck(ship2, ship1);
+        winGame();
         //view
         drawObject(ctx, ship1.alive ? img1 : explosion, ship1);
         drawObject(ctx, ship2.alive ? img2 : explosion, ship2);

@@ -241,14 +241,8 @@ window.onload = function() {
         shipCollisionCheck(ship1,ship2);
         shipCollisionCheck(ship2, ship1);
         //view
-        if (!ship1.alive) {
-            img1 = explosion;
-        }
-        if (!ship2.alive) {
-            img2 = explosion;
-        }
-        drawObject(ctx, img1, ship1);
-        drawObject(ctx, img2, ship2);
+        drawObject(ctx, ship1.alive ? img1 : explosion, ship1);
+        drawObject(ctx, ship2.alive ? img2 : explosion, ship2);
         if (ship1.shot.active) {
             drawObject(ctx, shot1, ship1.shot);
         }

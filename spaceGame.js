@@ -3,6 +3,7 @@
 var TO_RADIANS = Math.PI/180;
 var globalWidth = 1000;
 var globalHeight = 800;
+var winScore = 2;
 
 var ship1 = new SpaceShip(10,10,30,40,180, 'player1');
 var ship2 = new SpaceShip(960,750,30,40,0, 'player2');
@@ -243,11 +244,12 @@ function respawn(ship1, ship2){
 }
 
 function winGame() {
-    if (ship1.score == 10) {
-        alert("Player battleship won!")
+        document.getElementById("bestPlayer").style.display = "block";
+    if (ship1.score == winScore) {
+        document.getElementById("winMessage").innerHTML = 'PLAYER BATTLESHIP WON!!';
     }
-    if (ship2.score == 10) {
-        alert("Player battleship won!")
+    if (ship2.score == winScore) {
+        document.getElementById("winMessage").innerHTML = 'PLAYER SPEEDSHIP WON!!';
     }
 
 }

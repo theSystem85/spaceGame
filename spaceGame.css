@@ -1,3 +1,6 @@
+html {
+    font-family: 'Lato', sans-serif;
+}
 .battleship {
     display: none;
 }
@@ -9,4 +12,18 @@
 .counter div {
 	display: inline-block;
     margin-right: 50px;
+}
+.bestPlayer {
+    display: none;
+    position: absolute;
+    width: 600px;
+    height: 200px;
+    margin-left: 250px;
+    margin-top: 100px; 
+    padding-top:200px;
+    color: orangered;
+    font-size: 2.5em;
+}
+.winMessage {
+    padding-top: 100px;
 }

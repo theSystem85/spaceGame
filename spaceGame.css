@@ -14,7 +14,6 @@ html {
     margin-right: 50px;
 }
 .bestPlayer {
-    display: none;
     position: absolute;
     width: 600px;
     height: 200px;

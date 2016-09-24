@@ -3,7 +3,10 @@
 var TO_RADIANS = Math.PI/180;
 var globalWidth = 1000;
 var globalHeight = 800;
-var winScore = 2;
+var winScore = 5;
+var audioExplosion = new Audio('public/explosion01.m4a');
+var audioShot = new Audio('public/shoot01.m4a');
+audioExplosion.playbackRate = 2.0;
 
 var ship1 = new SpaceShip(10,10,30,40,180, 'player1');
 var ship2 = new SpaceShip(960,750,30,40,0, 'player2');
@@ -174,11 +177,15 @@ SpaceShip.prototype.giveFire = function () {
         this.shot.speed = new Vector2D(Math.cos(TO_RADIANS*(this.rotation+270))*this.shot.maxSpeed, Math.sin(TO_RADIANS*(this.rotation+270))*this.shot.maxSpeed);
         this.shot.active = true;
         this.shot.rotation = this.rotation;
+        audioExplosion.pause();
+        audioExplosion.currentTime=0;
+        audioExplosion.play();
     }
 }
 
 SpaceShip.prototype.explode = function () {
     this.alive = false;
+    audioShot.play();
 }
 
 function collisionCheck(obj1, obj2) {  // obj must have width, height, position=vector2D
@@ -244,7 +251,6 @@ function respawn(ship1, ship2){
 }
 
 function winGame() {
-        document.getElementById("bestPlayer").style.display = "block";
     if (ship1.score == winScore) {
         document.getElementById("winMessage").innerHTML = 'PLAYER BATTLESHIP WON!!';
     }

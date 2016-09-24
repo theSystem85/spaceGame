@@ -2,7 +2,10 @@
 //global definitions
 var TO_RADIANS = Math.PI/180;
 var globalWidth = 1000;
-var globalHeigth = 800;
+var globalHeight = 800;
+
+var ship1 = new SpaceShip(10,10,30,40,180);
+var ship2 = new SpaceShip(960,750,30,40,0);
 
 function Vector2D(x,y) {
     this.x = x;
@@ -66,12 +69,12 @@ Vector2D.prototype.getNorm = function () {
     return new Vector2D(this.x, this.y).div(length);
 };
 
-function Shot(x, y, width, heigth, rotation){
+function Shot(x, y, width, height, rotation){
     this.position = new Vector2D(x,y);
     this.speed = new Vector2D(0,0);
     this.maxSpeed = 10;
     this.width = width;
-    this.heigth = heigth;
+    this.height = height;
     this.rotation = rotation;
     this.active = false;
 }
@@ -81,24 +84,25 @@ Shot.prototype.step = function () {
 }
 
 Shot.prototype.middle = function () {
-    return new Vector2D(this.position.x+this.width/2, this.position.y+this.heigth/2);
+    return new Vector2D(this.position.x+this.width/2, this.position.y+this.height/2);
 };
 
-function SpaceShip(x, y, width, heigth, rotation) {
+function SpaceShip(x, y, width, height, rotation) {
     this.position = new Vector2D(x,y);
     this.speed = new Vector2D(0,0);
     this.width = width;
-    this.heigth = heigth;
+    this.height = height;
     this.acceleration = 0.2;
     this.rotation = rotation; //in degrees
-    this.alive = true;
+    this.alive = true; //when alive => show ship else => show explosion
     this.maxSpeed = 3;
     this.moveable = true;
-    this.shot = new Shot(0,0,16,16,0);
+    this.shot = new Shot(-32,-32,16,16,0);
+    this.score = 0;
 }
 
 SpaceShip.prototype.middle = function () {
-    return new Vector2D(this.position.x+this.width/2, this.position.y+this.heigth/2);
+    return new Vector2D(this.position.x+this.width/2, this.position.y+this.height/2);
 };
 
 SpaceShip.prototype.turnLeft = function () {
@@ -148,7 +152,7 @@ SpaceShip.prototype.bumpCheck = function () {
         this.speed.mul(new Vector2D(-1,1));
         this.recover();
     }
-    if ( (this.position.y+this.heigth) > globalHeigth){
+    if ( (this.position.y+this.height) > globalHeight){
         this.speed.mul(new Vector2D(1,-1));
         this.recover();
     }
@@ -169,17 +173,50 @@ SpaceShip.prototype.giveFire = function () {
     this.shot.rotation = this.rotation;
 }
 
+SpaceShip.prototype.explode = function () {
+    this.alive = false;
+}
+
+function collisionCheck(obj1, obj2) {  // obj must have width, height, position=vector2D
+    //this collision check is currently NOT respection rotation of the object.
+    //That means it is a bit inaccurate.
+    var xOverlap = (obj2.position.x-obj1.position.x < obj2.width
+                && obj2.position.x > obj1.position.x)
+                || (obj2.position.x+obj2.width > obj1.position.x
+                && obj1.position.x+obj1.width > obj2.position.x+obj2.width);
+
+    var yOverlap = (obj2.position.y-obj1.position.y < obj2.height
+                && obj2.position.y > obj1.position.y)
+                || (obj2.position.y+obj2.height > obj1.position.y
+                && obj1.position.y+obj1.height > obj2.position.y+obj2.height);
+
+    return xOverlap && yOverlap;
+}
+
+function shipCollisionCheck(shipX, shipY){
+    if (collisionCheck(shipX, shipY)) {
+        shipX.explode();
+        shipY.explode();        
+        shipX.score++;
+        shipY.score++;
+    }
+}
+
+function hitCheck(shipX, shipY){
+    if (collisionCheck(shipX, shipY.shot)){
+        shipX.explode();
+        shipY.score++;
+    }
+}
+
 function drawObject(ctx, img, object) {
     ctx.save();
     var mid = object.middle();
     ctx.translate(mid.x, mid.y);
     ctx.rotate(object.rotation * TO_RADIANS);
-    ctx.drawImage(img, -object.width/2, -object.heigth/2, object.width, object.heigth);
+    ctx.drawImage(img, -object.width/2, -object.height/2, object.width, object.height);
     ctx.restore();
 }
-
-var ship1 = new SpaceShip(10,10,30,40,180);
-var ship2 = new SpaceShip(960,750,30,40,0);
 
 
 window.onload = function() {
@@ -190,16 +227,26 @@ window.onload = function() {
     var img2=document.getElementById("bgspeedship");
     var shot1 = document.getElementById("shot01");
     var shot2 = document.getElementById("shot02");
+    var explosion = document.getElementById("explosion");
     
     function step(){
         ctx.fillStyle="#FFFFFF";
-        ctx.fillRect(0,0,globalWidth,globalHeigth);
+        ctx.fillRect(0,0,globalWidth,globalHeight);
 
         //logic
         ship1.step();
         ship2.step();
-
+        hitCheck(ship1, ship2);
+        hitCheck(ship2, ship1);
+        shipCollisionCheck(ship1,ship2);
+        shipCollisionCheck(ship2, ship1);
         //view
+        if (!ship1.alive) {
+            img1 = explosion;
+        }
+        if (!ship2.alive) {
+            img2 = explosion;
+        }
         drawObject(ctx, img1, ship1);
         drawObject(ctx, img2, ship2);
         if (ship1.shot.active) {
@@ -225,7 +272,7 @@ window.onload = function() {
         keyMap[83] = ship1.break.bind(ship1); //s key
         keyMap[69] = ship1.giveFire.bind(ship1); //e key
 
-        if(typeof keyMap[key] !== 'undefined'){
+        if(typeof keyMap[key] === 'function'){
             keyMap[key](); //run action
         }
     });

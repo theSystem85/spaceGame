@@ -127,6 +127,9 @@ function SpaceShip(x, y, width, height, rotation, playerName, imageName) {
     this.playerName = playerName;
     this.imageName = imageName;
     this.animation = new ScaleAnimation(200, 211, 300, 100);
+    this.turnRate = 5; //in degrees per frame
+    this.currentTurnRate = 0;
+    this.currentAcceleration = 0;
 }
 
 SpaceShip.prototype.middle = function () {
@@ -134,23 +137,27 @@ SpaceShip.prototype.middle = function () {
 };
 
 SpaceShip.prototype.turnLeft = function () {
-    this.rotation = (this.rotation - 5)%360 ;
+    this.currentTurnRate = -5;
 };
 
 SpaceShip.prototype.turnRight = function () {
-    this.rotation = (this.rotation + 5)%360 ;
+    this.currentTurnRate = 5;
+};
+
+SpaceShip.prototype.stopTurning = function () {
+    this.currentTurnRate = 0;
 };
 
 SpaceShip.prototype.accelerate = function () {
-    if (this.moveable){
-        this.speed.sub(new Vector2D(Math.cos(TO_RADIANS*(this.rotation+90))*this.acceleration, Math.sin(TO_RADIANS*(this.rotation+90))*this.acceleration));
-    }
+    this.currentAcceleration = -this.acceleration;
 };
 
 SpaceShip.prototype.break = function () {
-    if (this.moveable) {
-        this.speed.add(new Vector2D(Math.cos(TO_RADIANS*(this.rotation+90))*this.acceleration, Math.sin(TO_RADIANS*(this.rotation+90))*this.acceleration));
-    }    
+    this.currentAcceleration = this.acceleration;   
+};
+
+SpaceShip.prototype.engineShutDown = function () {
+    this.currentAcceleration = 0;   
 };
 
 SpaceShip.prototype.step = function () {
@@ -158,6 +165,13 @@ SpaceShip.prototype.step = function () {
     this.position.add(this.speed);
     this.bumpCheck();
     this.shot.step();
+    this.rotation = (this.rotation + this.currentTurnRate)%360;
+
+    if (this.moveable){
+        var x = Math.cos(TO_RADIANS*(this.rotation+90))*this.acceleration;
+        var y = Math.sin(TO_RADIANS*(this.rotation+90))*this.acceleration;
+        this.speed.add(new Vector2D(x, y).mul(this.currentAcceleration));
+    }
 };
 
 SpaceShip.prototype.limitSpeed = function () {
@@ -397,22 +411,41 @@ window.onload = function() {
     }
     setInterval(step, refreshRate);
 
+    var keyDownMap = [];
+    keyDownMap[37] = ship2.turnLeft.bind(ship2); //arrow left
+    keyDownMap[39] = ship2.turnRight.bind(ship2); //arrow right
+    keyDownMap[38] = ship2.accelerate.bind(ship2); //arrow up
+    keyDownMap[40] = ship2.break.bind(ship2); //arrow down
+    keyDownMap[189] = ship2.giveFire.bind(ship2); //dash key
+    keyDownMap[65] = ship1.turnLeft.bind(ship1); //a key
+    keyDownMap[68] = ship1.turnRight.bind(ship1); //d key
+    keyDownMap[87] = ship1.accelerate.bind(ship1); //w key
+    keyDownMap[83] = ship1.break.bind(ship1); //s key
+    keyDownMap[69] = ship1.giveFire.bind(ship1); //e key
+
+    var keyUpMap = [];
+    keyUpMap[37] = ship2.stopTurning.bind(ship2); //arrow left
+    keyUpMap[39] = ship2.stopTurning.bind(ship2); //arrow left
+    keyUpMap[38] = ship2.engineShutDown.bind(ship2); //arrow up
+    keyUpMap[40] = ship2.engineShutDown.bind(ship2); //arrow down
+    keyUpMap[65] = ship1.stopTurning.bind(ship1); //a key
+    keyUpMap[68] = ship1.stopTurning.bind(ship1); //d key
+    keyUpMap[87] = ship1.engineShutDown.bind(ship1); //w key
+    keyUpMap[83] = ship1.engineShutDown.bind(ship1); //s key
+
     document.getElementById('body').addEventListener('keydown', function (e) {
         var key = e.which || e.keyCode;
-        var keyMap = [];
-        keyMap[37] = ship2.turnLeft.bind(ship2); //arrow left
-        keyMap[39] = ship2.turnRight.bind(ship2); //arrow right
-        keyMap[38] = ship2.accelerate.bind(ship2); //arrow up
-        keyMap[40] = ship2.break.bind(ship2); //arrow down
-        keyMap[35] = ship2.giveFire.bind(ship2); //end key
-        keyMap[65] = ship1.turnLeft.bind(ship1); //a key
-        keyMap[68] = ship1.turnRight.bind(ship1); //d key
-        keyMap[87] = ship1.accelerate.bind(ship1); //w key
-        keyMap[83] = ship1.break.bind(ship1); //s key
-        keyMap[69] = ship1.giveFire.bind(ship1); //e key
 
-        if(typeof keyMap[key] === 'function'){
-            keyMap[key](); //run action
+        if(typeof keyDownMap[key] === 'function'){
+            keyDownMap[key](); //run action
+        }
+    });
+
+    document.getElementById('body').addEventListener('keyup', function (e) {
+        var key = e.which || e.keyCode;
+
+        if(typeof keyUpMap[key] === 'function'){
+            keyUpMap[key](); //run action
         }
     });
 };

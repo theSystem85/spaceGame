@@ -1,3 +1,5 @@
+var SERVER_WS_URL = 'ws://localhost:3001';//'ws://patrick-beyer-software.de:3001';
+var server = new WebSocket(SERVER_WS_URL);
 
 //global definitions
 var TO_RADIANS = Math.PI/180;
@@ -5,8 +7,8 @@ var refreshRate = 33; //in milliseconds
 var globalWidth = 1000;
 var globalHeight = 800;
 var winScore = 5;
-var audioExplosion = new Audio('public/explosion01.m4a');
-var audioShot = new Audio('public/shoot01.m4a');
+var audioExplosion = new Audio('resources/explosion01.m4a');
+var audioShot = new Audio('resources/shoot01.m4a');
 audioExplosion.playbackRate = 2.0;
 
 var ship1 = new SpaceShip(10,10,30,40,180, 'player1', 'bgbattleship');
@@ -433,11 +435,20 @@ window.onload = function() {
     keyUpMap[87] = ship1.engineShutDown.bind(ship1); //w key
     keyUpMap[83] = ship1.engineShutDown.bind(ship1); //s key
 
+    function prepareKeyUpRequest(keyCode){
+        return JSON.stringify({request: 'keyUp', keyCode: keyCode});
+    }
+
+    function prepareKeyDownRequest(keyCode){
+        return JSON.stringify({request: 'keyDown', keyCode: keyCode});
+    }
+
     document.getElementById('body').addEventListener('keydown', function (e) {
         var key = e.which || e.keyCode;
 
         if(typeof keyDownMap[key] === 'function'){
-            keyDownMap[key](); //run action
+            //send key event to server
+            server.send(prepareKeyDownRequest(key));
         }
     });
 
@@ -445,7 +456,18 @@ window.onload = function() {
         var key = e.which || e.keyCode;
 
         if(typeof keyUpMap[key] === 'function'){
-            keyUpMap[key](); //run action
+            //send key event to server
+            server.send(prepareKeyUpRequest(key));
         }
     });
-};
+
+    server.onmessage = function(event){
+        var data = JSON.parse(event.data);
+
+        if(data.response == 'keyUp'){
+            keyUpMap[data.keyCode](); //run action
+        } else if(data.response == 'keyDown'){
+            keyDownMap[data.keyCode](); //run action
+        }
+    }
+}

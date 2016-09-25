@@ -1,0 +1,29 @@
+{
+  "name": "spacegame",
+  "version": "1.0.0",
+  "description": "a small game where two space ships shoot each other",
+  "main": "app.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/theSystem85/spaceGame.git"
+  },
+  "keywords": [
+    "game",
+    "space",
+    "two",
+    "player"
+  ],
+  "author": "PG",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/theSystem85/spaceGame/issues"
+  },
+  "homepage": "https://github.com/theSystem85/spaceGame#readme",
+  "dependencies": {
+    "express": "^4.14.0",
+    "ws": "^1.1.1"
+  }
+}

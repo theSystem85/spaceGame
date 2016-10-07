@@ -1,18 +1,9 @@
 var SERVER_WS_URL = 'ws://localhost:3001';//'ws://patrick-beyer-software.de:3001';
 var server = new WebSocket(SERVER_WS_URL);
 
-//global definitions
 var TO_RADIANS = Math.PI/180;
-var refreshRate = 33; //in milliseconds
-var globalWidth = 1000;
-var globalHeight = 800;
-var winScore = 5;
-var audioExplosion = new Audio('resources/explosion01.m4a');
-var audioShot = new Audio('resources/shoot01.m4a');
-audioExplosion.playbackRate = 2.0;
 
-var ship1 = new SpaceShip(10,10,30,40,180, 'player1', 'bgbattleship');
-var ship2 = new SpaceShip(960,750,30,40,0, 'player2', 'bgspeedship');
+var game = new Game();
 
 //provide draw context as a singleton
 var Context2D = (function(){
@@ -33,6 +24,10 @@ var Context2D = (function(){
         }
     }
 })();
+
+// --------------------------------------------------
+// ---------------- Begin Vector2D -----------------
+// --------------------------------------------------
 
 function Vector2D(x,y) {
     this.x = x;
@@ -95,6 +90,13 @@ Vector2D.prototype.getNorm = function () {
     var length = this.getLength();
     return new Vector2D(this.x, this.y).div(length);
 };
+// --------------------------------------------------
+// ---------------- End Vector2D -----------------
+// --------------------------------------------------
+
+// --------------------------------------------------
+// ---------------- Begin Shot -----------------
+// --------------------------------------------------
 
 function Shot(x, y, width, height, rotation){
     this.position = new Vector2D(x,y);
@@ -114,6 +116,14 @@ Shot.prototype.middle = function () {
     return new Vector2D(this.position.x+this.width/2, this.position.y+this.height/2);
 };
 
+// --------------------------------------------------
+// ---------------- End Shot -----------------
+// --------------------------------------------------
+
+// --------------------------------------------------
+// ---------------- Begin SpaceShip -----------------
+// --------------------------------------------------
+
 function SpaceShip(x, y, width, height, rotation, playerName, imageName) {
     this.position = new Vector2D(x,y);
     this.speed = new Vector2D(0,0);
@@ -127,11 +137,10 @@ function SpaceShip(x, y, width, height, rotation, playerName, imageName) {
     this.shot = new Shot(-32,-32,16,16,0);
     this.score = 0;
     this.playerName = playerName;
-    this.imageName = imageName;
-    this.animation = new ScaleAnimation(200, 211, 300, 100);
     this.turnRate = 5; //in degrees per frame
     this.currentTurnRate = 0;
     this.currentAcceleration = 0;
+    this.events = []; //for external animation or sound handling
 }
 
 SpaceShip.prototype.middle = function () {
@@ -165,7 +174,6 @@ SpaceShip.prototype.engineShutDown = function () {
 SpaceShip.prototype.step = function () {
     this.limitSpeed();
     this.position.add(this.speed);
-    this.bumpCheck();
     this.shot.step();
     this.rotation = (this.rotation + this.currentTurnRate)%360;
 
@@ -191,116 +199,300 @@ SpaceShip.prototype.recover = function () {
     }).bind(this),1000);
 }
 
-SpaceShip.prototype.bumpCheck = function () {
-    if ( (this.position.x+this.width) > globalWidth){
-        this.speed.mul(new Vector2D(-1,1));
-        this.recover();
-    }
-    if ( (this.position.y+this.height) > globalHeight){
-        this.speed.mul(new Vector2D(1,-1));
-        this.recover();
-    }
-    if ( (this.position.x) < 0){
-        this.speed.mul(new Vector2D(-1,1));
-        this.recover();
-    }
-    if ( (this.position.y) < 0){
-        this.speed.mul(new Vector2D(1,-1));
-        this.recover();
-    }
-}
-
 SpaceShip.prototype.giveFire = function () {
     if(this.alive){
         this.shot.position = this.middle();
         this.shot.speed = new Vector2D(Math.cos(TO_RADIANS*(this.rotation+270))*this.shot.maxSpeed, Math.sin(TO_RADIANS*(this.rotation+270))*this.shot.maxSpeed);
         this.shot.active = true;
         this.shot.rotation = this.rotation;
-        audioShot.pause();
-        audioShot.currentTime=0;
-        audioShot.play();
+        this.events.push("fired");
     }
 }
 
 SpaceShip.prototype.explode = function () {
     this.alive = false;
-    audioExplosion.play();
-    this.animation.status = 'started'; //start animation;
+    this.events.push("explodeSound");
+    this.events.push("explodeAnimation");
+}
+// --------------------------------------------------
+// ------------------ End SpaceShip -----------------
+// --------------------------------------------------
+
+function SpaceShipView(spaceShip, imageName, refreshRate){
+    this.body = spaceShip;
+    this.imageName = imageName;
+    this.animation = new ScaleAnimation(200, 211, 300, 100, refreshRate);
 }
 
-function collisionCheck(obj1, obj2) {  // obj must have width, height, position=vector2D
-    //this collision check is currently NOT respection rotation of the object.
-    //That means it is a bit inaccurate.
-    var xOverlap = (obj2.position.x-obj1.position.x < obj2.width
-                && obj2.position.x > obj1.position.x)
-                || (obj2.position.x+obj2.width > obj1.position.x
-                && obj1.position.x+obj1.width > obj2.position.x+obj2.width);
+// --------------------------------------------------
+// ------------------ Begin Game -----------------
+// --------------------------------------------------
 
-    var yOverlap = (obj2.position.y-obj1.position.y < obj2.height
-                && obj2.position.y > obj1.position.y)
-                || (obj2.position.y+obj2.height > obj1.position.y
-                && obj1.position.y+obj1.height > obj2.position.y+obj2.height);
+function Game() {
 
-    return xOverlap && yOverlap;
-}
+	this.refreshRate = 33; //in milliseconds
+	this.globalWidth = 1000;
+	this.globalHeight = 800;
+	this.winScore = 5;
+	this.ship1 = new SpaceShip(10,10,30,40,180, 'player1');
+	this.ship2 = new SpaceShip(960,750,30,40,0, 'player2');
+    this.winner = '';
 
-function shipCollisionCheck(shipX, shipY){
-    if (collisionCheck(shipX, shipY) && shipX.alive == true && shipY.alive == true) {
-        shipX.explode();
-        shipY.explode();        
-        shipX.score++;
-        shipY.score++;
-        console.log(shipY.score)
-        document.getElementById("countScoresP1").innerHTML = shipX.score;
-        document.getElementById("countScoresP2").innerHTML = shipY.score;
-        respawn(ship1, ship2);
+    this.collisionCheck = (obj1, obj2) => {  // obj must have width, height, position=vector2D
+        //this collision check is currently NOT respection rotation of the object.
+        //That means it is a bit inaccurate.
+        var xOverlap = (obj2.position.x-obj1.position.x < obj2.width
+                    && obj2.position.x > obj1.position.x)
+                    || (obj2.position.x+obj2.width > obj1.position.x
+                    && obj1.position.x+obj1.width > obj2.position.x+obj2.width);
+
+        var yOverlap = (obj2.position.y-obj1.position.y < obj2.height
+                    && obj2.position.y > obj1.position.y)
+                    || (obj2.position.y+obj2.height > obj1.position.y
+                    && obj1.position.y+obj1.height > obj2.position.y+obj2.height);
+
+        return xOverlap && yOverlap;
     }
-}
 
-function hitCheck(shipX, shipY){
-    if (collisionCheck(shipX, shipY.shot) && shipX.alive == true){
-        shipX.explode();
-        shipX.shot.active = false;
-        shipY.shot.active = false;
-        shipY.score++;
-        if (shipY.playerName == 'player2') {
-            document.getElementById("countScoresP2").innerHTML = shipY.score;
-        } else {
-            document.getElementById("countScoresP1").innerHTML = shipY.score;
+    this.shipCollisionCheck = (shipX, shipY) => {
+        if (this.collisionCheck(shipX, shipY) && shipX.alive == true && shipY.alive == true) {
+            shipX.explode();
+            shipY.explode();        
+            shipX.score++;
+            shipY.score++;
+            this.respawn(this.ship1, this.ship2);
         }
-        
-        respawn(ship1, ship2);
+    }
+
+    this.hitCheck = (shipX, shipY) => {
+        if (this.collisionCheck(shipX, shipY.shot) && shipX.alive == true){
+            shipX.explode();
+            shipX.shot.active = false;
+            shipY.shot.active = false;
+            shipY.score++;
+            
+            this.respawn(this.ship1, this.ship2);
+        }
+    }
+
+    this.respawn = (ship1, ship2) => {
+        setTimeout(function () {
+            if (!ship1.alive || !ship2.alive){
+                ship1.position = new Vector2D(10,10);
+                ship2.position = new Vector2D(960,750);
+                ship1.speed = new Vector2D(0,0);
+                ship2.speed = new Vector2D(0,0);
+                ship1.rotation = 180;
+                ship2.rotation = 0;
+                ship1.alive = true;
+                ship2.alive = true;
+                ship1.shot.active = true;
+                ship2.shot.active = true;
+                this.winner = '';
+        }
+        }, 1000)    
+    }
+
+    this.winGameCheck = () => {
+        if (this.ship1.score == this.winScore) {
+            this.winner = this.ship1.playerName;
+        }
+        if (this.ship2.score == this.winScore) {
+            this.winner = this.ship2.playerName;
+        }
+    }
+
+    this.bumpCheckShip = function (ship) {
+        if ( (ship.position.x+ship.width) > this.globalWidth){
+            ship.speed.mul(new Vector2D(-1,1));
+            ship.recover();
+        }
+        if ( (ship.position.y+ship.height) > this.globalHeight){
+            ship.speed.mul(new Vector2D(1,-1));
+            ship.recover();
+        }
+        if ( (ship.position.x) < 0){
+            ship.speed.mul(new Vector2D(-1,1));
+            ship.recover();
+        }
+        if ( (ship.position.y) < 0){
+            ship.speed.mul(new Vector2D(1,-1));
+            ship.recover();
+        }
+    }
+
+    this.bumpCheck = function () {
+        this.bumpCheckShip(this.ship1);
+        this.bumpCheckShip(this.ship2);
+    }
+
+    this.step = () => {
+        this.ship1.step();
+        this.ship2.step();
+        this.bumpCheck();
+        this.hitCheck(this.ship1, this.ship2);
+        this.hitCheck(this.ship2, this.ship1);
+        this.shipCollisionCheck(this.ship1, this.ship2);
+        this.shipCollisionCheck(this.ship2, this.ship1);
+        this.winGameCheck();
     }
 }
+// --------------------------------------------------
+// ------------------ End Game -----------------
+// --------------------------------------------------
 
-function respawn(ship1, ship2){
-    setTimeout(function () {
-        if (!ship1.alive || !ship2.alive){
-            ship1.position = new Vector2D(10,10);
-            ship2.position = new Vector2D(960,750);
-            ship1.speed = new Vector2D(0,0);
-            ship2.speed = new Vector2D(0,0);
-            ship1.rotation = 180;
-            ship2.rotation = 0;
-            ship1.alive = true;
-            ship2.alive = true;
-            ship1.shot.active = true;
-            ship2.shot.active = true;
+// --------------------------------------------------
+// ------------------ Begin GameView -----------------
+// --------------------------------------------------
+function GameView(game) {
+    this.game = game;
+    this.ship1View = new SpaceShipView(this.game.ship1, 'bgbattleship', this.game.refreshRate);
+	this.ship2View = new SpaceShipView(this.game.ship2, 'bgspeedship', this.game.refreshRate);
+    this.shipViews = [this.ship1View, this.ship2View];
+
+    this.shot1Pic = document.getElementById("shot01");
+    this.shot2Pic = document.getElementById("shot02");
+
+    this.audioExplosion = new Audio('resources/explosion01.m4a');
+	this.audioShot = new Audio('resources/shoot01.m4a');
+    this.audioExplosion.playbackRate = 2.0;
+
+    this.ctx = Context2D.getInstance();
+
+    this.clearScreen = () => {
+        this.ctx.fillStyle = "#FFFFFF";
+        this.ctx.fillRect(0, 0, this.game.globalWidth, this.game.globalHeight);
     }
-    }, 1000)    
+
+    this.showWinner = () => {
+        if(this.game.winner !== '')
+            document.getElementById("winMessage").innerHTML = 'PLAYER ' + this.game.winner + ' WON!!';
+    }
+
+    this.showScores = () => {
+        document.getElementById("countScoresP1").innerHTML = this.game.ship1.score;
+        document.getElementById("countScoresP2").innerHTML = this.game.ship2.score;
+    }
+
+    //------------- animation handling -----------------
+
+    this.eventsToAnimationMap = {
+        "explodeAnimation": (animation) => { animation.status = 'started'; }
+    }
+    
+    this.handleAnimationEvent = (eventName, animation) => {
+        this.eventsToAnimationMap[eventName](animation);
+    }
+    
+    this.playAnimations = () => {
+        this.shipViews.forEach(shipView => {
+            shipView.body.events.forEach((eventName, id) => {
+                if(typeof this.eventsToAnimationMap[eventName] !== 'undefined'){
+                    this.handleAnimationEvent(eventName, shipView.animation);
+                    shipView.body.events.splice(id, 1);
+                }
+            });
+            
+            if(shipView.body.events.length >= 100){
+                shipView.body.events.splice(10, 90); //empty to prevent overflows
+            }
+        });
+    }
+
+    // -------- sound handling ----------
+
+    this.eventsToSoundMap = {
+        "fired": this.audioShot,
+        "exploded": this.audioExplosion
+    }
+
+    this.handleSoundEvent = (eventName) => {
+        this.eventsToSoundMap[eventName].pause();
+        this.eventsToSoundMap[eventName].currentTime = 0;
+        this.eventsToSoundMap[eventName].play();
+    }
+
+    this.playSounds = () => {
+        this.shipViews.forEach(shipView => {
+            shipView.body.events.forEach((eventName, id) => {
+                if(typeof this.eventsToSoundMap[eventName] !== 'undefined'){
+                    this.handleSoundEvent(eventName);
+                    shipView.body.events.splice(id, 1);
+                }
+            });
+            
+            if(shipView.body.events.length >= 100){
+                shipView.body.events.splice(10, 90); //empty to prevent overflows
+            }
+        });
+    }
+
+    this.drawObject = (img, object, width, height) => {
+        var widthToDraw = typeof width == 'undefined' ? object.width : width;
+        var heightToDraw = typeof height == 'undefined' ? object.height : height;
+        var mid = object.middle();
+        var ctx = Context2D.getInstance();
+
+        this.ctx.save();
+        this.ctx.translate(mid.x, mid.y);
+        this.ctx.rotate(object.rotation * TO_RADIANS);
+        this.ctx.drawImage(img, -object.width/2, -object.height/2, widthToDraw, heightToDraw);
+        this.ctx.restore();
+    }
+
+    //this animation draws the img initially with size 0 and scales it up
+    //(in 'timeToScaleUp' ms) to its maximum size
+    //to scale it down afterwards in 'timeToScaleDown' milliseconds.
+    //If timeToScaleDown is missing it will not scale down.
+    this.drawScaleAnimation = (img, object) => {
+
+        object.animation.step();
+
+        if(object.animation.status == 'started'){
+            this.drawObject(img, object.body, object.animation.currentWidth, object.animation.currentHeight);
+        }
+    }
+
+    this.drawShip = (shipView) => {
+        var img = document.getElementById(shipView.imageName);
+        var imgExplosion = document.getElementById("explosion");
+        var ctx = Context2D.getInstance();
+
+        if(shipView.body.alive){
+            this.drawObject(img, shipView.body);
+        } else {
+            this.drawScaleAnimation(imgExplosion, shipView);
+        }
+    }
+
+    this.drawShot = (shot, img) => {
+        if (shot.active) {
+            this.drawObject(img, shot);
+        }
+    }
+
+    this.update = () => {
+        this.clearScreen();
+        this.drawShip(this.ship1View);
+        this.drawShip(this.ship2View);
+        this.drawShot(this.ship1View.body.shot, this.shot1Pic);
+        this.drawShot(this.ship2View.body.shot, this.shot2Pic);
+
+        this.showWinner();
+        this.showScores();
+        this.playSounds();
+        this.playAnimations();
+    }
 }
+// --------------------------------------------------
+// ------------------ End GameView -----------------
+// --------------------------------------------------
 
-function winGame() {
-    if (ship1.score == winScore) {
-        document.getElementById("winMessage").innerHTML = 'PLAYER BATTLESHIP WON!!';
-    }
-    if (ship2.score == winScore) {
-        document.getElementById("winMessage").innerHTML = 'PLAYER SPEEDSHIP WON!!';
-    }
+// --------------------------------------------------
+// ---------------- Begin ScaleAnimation ------------
+// --------------------------------------------------
 
-}
-
-function ScaleAnimation(width, height, timeToScaleUp, timeToScaleDown){
+function ScaleAnimation(width, height, timeToScaleUp, timeToScaleDown, refreshRate){
     this.status = 'ended'; //can be 'ended', 'started', 'paused'
     this.timeSinceStart = 0; //in ms
     this.height = height; //max height
@@ -344,96 +536,42 @@ function ScaleAnimation(width, height, timeToScaleUp, timeToScaleDown){
     }
 }
 
-function drawObject(img, object, width, height) {
-    var widthToDraw = typeof width == 'undefined' ? object.width : width;
-    var heightToDraw = typeof height == 'undefined' ? object.height : height;
-    var mid = object.middle();
-    var ctx = Context2D.getInstance();
-
-    ctx.save();
-    ctx.translate(mid.x, mid.y);
-    ctx.rotate(object.rotation * TO_RADIANS);
-    ctx.drawImage(img, -object.width/2, -object.height/2, widthToDraw, heightToDraw);
-    ctx.restore();
-}
-
-//this animation draws the img initially with size 0 and scales it up
-//(in 'timeToScaleUp' ms) to its maximum size
-//to scale it down afterwards in 'timeToScaleDown' milliseconds.
-//If timeToScaleDown is missing it will not scale down.
-function drawScaleAnimation(img, object) {
-    var ctx = Context2D.getInstance();
-
-    object.animation.step();
-
-    if(object.animation.status == 'started'){
-        drawObject(img, object, object.animation.currentWidth, object.animation.currentHeight);
-    }
-}
-
-function drawShip(ship) {
-
-    var img = document.getElementById(ship.imageName);
-    var imgExplosion = document.getElementById("explosion");
-    var ctx = Context2D.getInstance();
-
-    if(ship.alive){
-        drawObject(img, ship);
-    } else {
-        drawScaleAnimation(imgExplosion, ship);
-    }
-}
+// --------------------------------------------------
+// ---------------- End ScaleAnimation --------------
+// --------------------------------------------------
 
 window.onload = function() {
-    var shot1 = document.getElementById("shot01");
-    var shot2 = document.getElementById("shot02");
+
+    var game = new Game();
+    var gameView = new GameView(game);
     
     function step(){
-        var ctx = Context2D.getInstance();
-        ctx.fillStyle="#FFFFFF";
-        ctx.fillRect(0,0,globalWidth,globalHeight);
-
-        //logic
-        ship1.step();
-        ship2.step();
-        hitCheck(ship1, ship2);
-        hitCheck(ship2, ship1);
-        shipCollisionCheck(ship1,ship2);
-        shipCollisionCheck(ship2, ship1);
-        winGame();
-        //view
-        drawShip(ship1);
-        drawShip(ship2);
-        if (ship1.shot.active) {
-            drawObject(shot1, ship1.shot);
-        }
-        if (ship2.shot.active) {
-            drawObject(shot2, ship2.shot);
-        }
+        game.step();
+        gameView.update();
     }
-    setInterval(step, refreshRate);
+    setInterval(step, game.refreshRate);
 
     var keyDownMap = [];
-    keyDownMap[37] = ship2.turnLeft.bind(ship2); //arrow left
-    keyDownMap[39] = ship2.turnRight.bind(ship2); //arrow right
-    keyDownMap[38] = ship2.accelerate.bind(ship2); //arrow up
-    keyDownMap[40] = ship2.break.bind(ship2); //arrow down
-    keyDownMap[16] = ship2.giveFire.bind(ship2); //dash key
-    keyDownMap[65] = ship1.turnLeft.bind(ship1); //a key
-    keyDownMap[68] = ship1.turnRight.bind(ship1); //d key
-    keyDownMap[87] = ship1.accelerate.bind(ship1); //w key
-    keyDownMap[83] = ship1.break.bind(ship1); //s key
-    keyDownMap[69] = ship1.giveFire.bind(ship1); //e key
+    keyDownMap[37] = game.ship2.turnLeft.bind(game.ship2); //arrow left
+    keyDownMap[39] = game.ship2.turnRight.bind(game.ship2); //arrow right
+    keyDownMap[38] = game.ship2.accelerate.bind(game.ship2); //arrow up
+    keyDownMap[40] = game.ship2.break.bind(game.ship2); //arrow down
+    keyDownMap[16] = game.ship2.giveFire.bind(game.ship2); //dash key
+    keyDownMap[65] = game.ship1.turnLeft.bind(game.ship1); //a key
+    keyDownMap[68] = game.ship1.turnRight.bind(game.ship1); //d key
+    keyDownMap[87] = game.ship1.accelerate.bind(game.ship1); //w key
+    keyDownMap[83] = game.ship1.break.bind(game.ship1); //s key
+    keyDownMap[69] = game.ship1.giveFire.bind(game.ship1); //e key
 
     var keyUpMap = [];
-    keyUpMap[37] = ship2.stopTurning.bind(ship2); //arrow left
-    keyUpMap[39] = ship2.stopTurning.bind(ship2); //arrow left
-    keyUpMap[38] = ship2.engineShutDown.bind(ship2); //arrow up
-    keyUpMap[40] = ship2.engineShutDown.bind(ship2); //arrow down
-    keyUpMap[65] = ship1.stopTurning.bind(ship1); //a key
-    keyUpMap[68] = ship1.stopTurning.bind(ship1); //d key
-    keyUpMap[87] = ship1.engineShutDown.bind(ship1); //w key
-    keyUpMap[83] = ship1.engineShutDown.bind(ship1); //s key
+    keyUpMap[37] = game.ship2.stopTurning.bind(game.ship2); //arrow left
+    keyUpMap[39] = game.ship2.stopTurning.bind(game.ship2); //arrow left
+    keyUpMap[38] = game.ship2.engineShutDown.bind(game.ship2); //arrow up
+    keyUpMap[40] = game.ship2.engineShutDown.bind(game.ship2); //arrow down
+    keyUpMap[65] = game.ship1.stopTurning.bind(game.ship1); //a key
+    keyUpMap[68] = game.ship1.stopTurning.bind(game.ship1); //d key
+    keyUpMap[87] = game.ship1.engineShutDown.bind(game.ship1); //w key
+    keyUpMap[83] = game.ship1.engineShutDown.bind(game.ship1); //s key
 
     function prepareKeyUpRequest(keyCode){
         return JSON.stringify({request: 'keyUp', keyCode: keyCode});
@@ -468,6 +606,30 @@ window.onload = function() {
             keyUpMap[data.keyCode](); //run action
         } else if(data.response == 'keyDown'){
             keyDownMap[data.keyCode](); //run action
+        } else if(data.response == 'sync'){
+            syncGame(data.gameState);
+        }
+    }
+
+    function syncGame(serverGame){
+        updateObject(game.ship1, serverGame.ship1);
+        updateObject(game.ship2, serverGame.ship2);
+    }
+}
+
+function updateObject(target, source) {
+    if (!source || !target || typeof source !== "object" || typeof target !== "object")
+        throw new TypeError("Invalid argument");
+
+    for (var p in source) {
+        if (source.hasOwnProperty(p) && p !== "events") {
+            if (source[p] && typeof source[p] === "object")
+                if (target[p] && typeof target[p] === "object")
+                    updateObject(target[p], source[p]);
+                else
+                    target[p] = source[p];
+            else 
+                target[p] = source[p];
         }
     }
 }

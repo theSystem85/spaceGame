@@ -3,6 +3,23 @@ var server = new WebSocket(SERVER_WS_URL);
 
 var TO_RADIANS = Math.PI/180;
 
+var smallStarsArray = [];
+for(var s = 0; s<20; s++){
+    smallStarsArray.push({
+        starXPosition: (Math.random() * 1000) + 1, 
+        starYPosition: (Math.random() * 800) + 1, 
+        smallStarRadius: (Math.random() * 2) + 0.2}
+)}
+var bigStarsArray = [];
+for(var b = 0; b<20; b++){
+    bigStarsArray.push({
+        starXPosition: (Math.random() * 1000) + 1, 
+        starYPosition: (Math.random() * 800) + 1, 
+        bigStarRadius: (Math.random() * 3.5) + 2.1}
+)};
+var factorS = {factorHSmall: 16, factorWSmall: 20};
+var factorB = {factorHBig: 8, factorWBig: 10};
+
 var game = new Game();
 
 //provide draw context as a singleton
@@ -24,6 +41,26 @@ var Context2D = (function(){
         }
     }
 })();
+function canvasBackground() {
+        var context = new Context2D.getInstance();        
+        var my_gradient = context.createLinearGradient(0,0,0,700);
+        my_gradient.addColorStop(0,"#191970");
+        my_gradient.addColorStop(1,"#000000");
+        context.fillStyle=my_gradient;
+        context.fillRect(0,0,1000,800); 
+        return context;
+};
+
+function starDrawing(x, y, rad, offset, factorH, factorW){
+    var ctx = new Context2D.getInstance();
+    var sx = x-offset.x/factorH;
+    var sy = y-offset.y/factorW;
+    ctx.beginPath();
+    ctx.arc(sx, sy, rad,0,2*Math.PI);
+    ctx.fillStyle="#f2f2f2";
+    ctx.stroke();
+    ctx.fill();
+    };
 
 // --------------------------------------------------
 // ---------------- Begin Vector2D -----------------
@@ -358,7 +395,7 @@ function GameView(game) {
     this.audioExplosion.playbackRate = 2.0;
 
     this.ctx = Context2D.getInstance();
-
+    
     this.clearScreen = () => {
         this.ctx.fillStyle = "#FFFFFF";
         this.ctx.fillRect(0, 0, this.game.globalWidth, this.game.globalHeight);
@@ -473,6 +510,21 @@ function GameView(game) {
 
     this.update = () => {
         this.clearScreen();
+        canvasBackground();
+        for (var i = 0; i<20; i++) {
+             starDrawing(smallStarsArray[i].starXPosition, 
+             smallStarsArray[i].starYPosition, 
+             smallStarsArray[i].smallStarRadius, 
+             {x: this.ship1View.body.position.x, y: this.ship1View.body.position.y},
+             factorS.factorHSmall, factorS.factorWSmall);
+        }
+        for (var k = 0; k<20; k++) {
+             starDrawing(bigStarsArray[k].starXPosition, 
+             bigStarsArray[k].starYPosition, 
+             bigStarsArray[k].bigStarRadius,
+             {x: this.ship1View.body.position.x, y: this.ship1View.body.position.y},
+             factorB.factorHBig, factorB.factorWBig);
+        }        
         this.drawShip(this.ship1View);
         this.drawShip(this.ship2View);
         this.drawShot(this.ship1View.body.shot, this.shot1Pic);
@@ -542,6 +594,7 @@ function ScaleAnimation(width, height, timeToScaleUp, timeToScaleDown, refreshRa
 
 window.onload = function() {
 
+    
     var game = new Game();
     var gameView = new GameView(game);
     

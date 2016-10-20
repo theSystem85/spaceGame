@@ -2,6 +2,8 @@ var SERVER_WS_URL = 'ws://localhost:3001';//'ws://patrick-beyer-software.de:3001
 var server = new WebSocket(SERVER_WS_URL);
 
 var TO_RADIANS = Math.PI/180;
+var shipHealthWidth = 130;
+var healthFactor = 1/4;
 
 var smallStarsArray = [];
 for(var s = 0; s<20; s++){
@@ -293,6 +295,8 @@ function Game() {
 
     this.shipCollisionCheck = (shipX, shipY) => {
         if (this.collisionCheck(shipX, shipY) && shipX.alive == true && shipY.alive == true) {
+            shipX.health = 0;
+            shipY.health = 0;
             shipX.explode();
             shipY.explode();        
             shipX.score++;
@@ -303,12 +307,15 @@ function Game() {
 
     this.hitCheck = (shipX, shipY) => {
         if (this.collisionCheck(shipX, shipY.shot) && shipX.alive == true){
+            shipX.health -= healthFactor;     
+        }
+        if(shipX.health == 0) {
             shipX.explode();
             shipX.shot.active = false;
             shipY.shot.active = false;
-            shipY.score++;
-            
+            shipY.score++;            
             this.respawn(this.ship1, this.ship2);
+            shipX.health = 1;
         }
     }
 
@@ -411,6 +418,11 @@ function GameView(game) {
         document.getElementById("countScoresP2").innerHTML = this.game.ship2.score;
     }
 
+    this.showHealth = () => {
+        document.getElementById("healthPlayer1Green").style.width = shipHealthWidth * this.ship1View.body.health + "px";
+        document.getElementById("healthPlayer2Green").style.width = shipHealthWidth * this.ship2View.body.health + "px";
+
+    }
     //------------- animation handling -----------------
 
     this.eventsToAnimationMap = {
@@ -532,6 +544,7 @@ function GameView(game) {
 
         this.showWinner();
         this.showScores();
+        this.showHealth();
         this.playSounds();
         this.playAnimations();
     }

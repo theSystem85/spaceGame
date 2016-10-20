@@ -15,6 +15,7 @@ function SpaceShip(x, y, width, height, rotation, playerName, imageName) {
     this.moveable = true;
     this.shot = new Shot(-32,-32,16,16,0);
     this.score = 0;
+    this.health = 1;
     this.playerName = playerName;
     this.turnRate = 5; //in degrees per frame
     this.currentTurnRate = 0;

@@ -1,5 +1,6 @@
 html {
     font-family: 'Lato', sans-serif;
+     box-sizing: border-box;
 }
 #myCanvas {
     display: block;
@@ -11,6 +12,7 @@ html {
 .counter {
     margin-bottom: 5px;
 	padding: 10px;
+    padding-bottom: 0px;
 	text-align: center;
 }
 .counter div {
@@ -29,4 +31,24 @@ html {
 }
 .winMessage {
     padding-top: 100px;
+}
+.healthBar {
+    margin-bottom: 4px;
+	padding: 1px;
+	text-align: center;
+}
+.health{
+	display: inline-block;
+    margin-right: 50px;
+    margin-bottom: 3px;
+    width: 130px;
+    height: 5px;
+    border: 0.5px solid black;
+	text-align: left;
+}
+.healthPlayer1Red, .healthPlayer2Red {
+    background-color: orangered;
+}
+.healthPlayer1Green, .healthPlayer2Green {
+    background-color: mediumblue
 }

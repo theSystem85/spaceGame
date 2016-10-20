@@ -1,6 +1,8 @@
 var SpaceShip = require('./spaceShip');
 var Vector2D = require('./vector');
 
+var healthFactor = 0.25;
+
 function Game()
 {
 	this.refreshRate = 33; //in milliseconds
@@ -29,6 +31,8 @@ function Game()
 
     this.shipCollisionCheck = (shipX, shipY) => {
         if (this.collisionCheck(shipX, shipY) && shipX.alive == true && shipY.alive == true) {
+            shipX.health = 0;
+            shipY.health = 0;
             shipX.explode();
             shipY.explode();        
             shipX.score++;
@@ -39,13 +43,17 @@ function Game()
 
     this.hitCheck = (shipX, shipY) => {
         if (this.collisionCheck(shipX, shipY.shot) && shipX.alive == true){
+            shipX.health -= healthFactor;     
+        }
+        if(shipX.health == 0) {
             shipX.explode();
             shipX.shot.active = false;
             shipY.shot.active = false;
-            shipY.score++;
-            
+            shipY.score++;            
             this.respawn(this.ship1, this.ship2);
+            shipX.health = 1;
         }
+         
     }
 
     this.respawn = (ship1, ship2) => {

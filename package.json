@@ -24,6 +24,7 @@
   "homepage": "https://github.com/theSystem85/spaceGame#readme",
   "dependencies": {
     "express": "^4.14.0",
+    "requirejs": "^2.3.2",
     "ws": "^1.1.1"
   }
 }
